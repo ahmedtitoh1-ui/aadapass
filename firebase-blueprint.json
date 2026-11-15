@@ -1,0 +1,335 @@
+{
+  "entities": {
+    "UserPublic": {
+      "title": "UserPublic",
+      "description": "Public user profile containing non-PII display information and role.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the user."
+        },
+        "username": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-.]+$",
+          "description": "Unique username handle."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Public display name."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["CUSTOMER", "CASHIER", "MERCHANT_MANAGER", "MERCHANT_OWNER", "SUPPORT_AGENT", "PLATFORM_ADMIN"],
+          "maxLength": 32,
+          "description": "Application role."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["uid", "username", "displayName", "role", "createdAt", "updatedAt"]
+    },
+    "UserPrivate": {
+      "title": "UserPrivate",
+      "description": "Isolated PII document for user email, phone number, and personal wallet metadata.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 160,
+          "description": "Private email address."
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Private phone number."
+        },
+        "accountCardCode": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "VIP Account Master Card code."
+        },
+        "accountPointsBalance": {
+          "type": "number",
+          "description": "VIP Account Master Card points balance."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["uid", "email", "phone", "accountCardCode", "accountPointsBalance", "createdAt", "updatedAt"]
+    },
+    "PushTokenDoc": {
+      "title": "PushTokenDoc",
+      "description": "Customer Web Push (FCM) device token bound to the VAPID Web Push Certificate.",
+      "type": "object",
+      "properties": {
+        "tokenId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique push token document ID."
+        },
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "token": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 512,
+          "description": "FCM Web Push registration token."
+        },
+        "vapidKeyPrefix": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 32,
+          "description": "Prefix of the VAPID Web Push Certificate key used."
+        },
+        "userAgent": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180,
+          "description": "Client browser user agent identifier."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["tokenId", "uid", "token", "vapidKeyPrefix", "userAgent", "createdAt", "updatedAt"]
+    },
+    "StoreDoc": {
+      "title": "StoreDoc",
+      "description": "Merchant store profile and loyalty card configuration.",
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique store identifier."
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the merchant owner."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "Store display name."
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Store category."
+        },
+        "city": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Store city."
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["SAR", "EGP"],
+          "maxLength": 10,
+          "description": "Store market currency."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "pending", "suspended"],
+          "maxLength": 24,
+          "description": "Store operational status."
+        },
+        "onlineOrderingActive": {
+          "type": "boolean",
+          "description": "Whether online ordering via WhatsApp & Cashier is enabled."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["storeId", "ownerId", "name", "category", "city", "currency", "status", "onlineOrderingActive", "createdAt", "updatedAt"]
+    },
+    "LoyaltyCard": {
+      "title": "LoyaltyCard",
+      "description": "Customer loyalty card (store_stamps, store_points, or account_master).",
+      "type": "object",
+      "properties": {
+        "cardId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique card ID."
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Customer UID who owns this card."
+        },
+        "storeId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Associated store ID."
+        },
+        "cardCategory": {
+          "type": "string",
+          "enum": ["store_stamps", "store_points", "account_master"],
+          "maxLength": 32,
+          "description": "One of the 3 loyalty system card categories."
+        },
+        "currentBalance": {
+          "type": "number",
+          "description": "Current stamps or points balance."
+        },
+        "totalEarned": {
+          "type": "number",
+          "description": "Lifetime earned stamps or points."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["cardId", "ownerId", "storeId", "cardCategory", "currentBalance", "totalEarned", "createdAt", "updatedAt"]
+    },
+    "OnlineOrder": {
+      "title": "OnlineOrder",
+      "description": "Customer online store order tracked by customer and cashier.",
+      "type": "object",
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Order ID."
+        },
+        "customerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Customer UID who placed the order."
+        },
+        "storeId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Target store ID."
+        },
+        "fulfillmentType": {
+          "type": "string",
+          "enum": ["DELIVERY", "PICKUP"],
+          "maxLength": 24,
+          "description": "Shipping/delivery or pickup."
+        },
+        "total": {
+          "type": "number",
+          "description": "Order total amount."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["PENDING", "ACCEPTED", "PREPARING", "READY", "COMPLETED", "REJECTED"],
+          "maxLength": 24,
+          "description": "Order lifecycle status."
+        },
+        "summaryText": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Short order items summary for WhatsApp and cashier."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["orderId", "customerId", "storeId", "fulfillmentType", "total", "status", "summaryText", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPublic" },
+      "description": "Public user profiles without PII."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivate" },
+      "description": "Isolated private user PII (email, phone, VIP account card balance) restricted to owner or admin."
+    },
+    "/users/{userId}/pushTokens/{tokenId}": {
+      "schema": { "$ref": "#/entities/PushTokenDoc" },
+      "description": "Isolated FCM Web Push registration tokens restricted to owner or admin."
+    },
+    "/stores/{storeId}": {
+      "schema": { "$ref": "#/entities/StoreDoc" },
+      "description": "Merchant store profiles."
+    },
+    "/users/{userId}/cards/{cardId}": {
+      "schema": { "$ref": "#/entities/LoyaltyCard" },
+      "description": "Customer loyalty cards subcollection (store_stamps, store_points, account_master)."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/OnlineOrder" },
+      "description": "Online store orders placed by customers and managed by store owners/cashiers."
+    }
+  }
+}

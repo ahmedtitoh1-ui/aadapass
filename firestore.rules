@@ -1,0 +1,350 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default-Deny Catch-All)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'ahmed.tito.h1@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Connection validation probe path
+    match /test/{docId} {
+      allow get: if isValidId(docId);
+      allow list, create, update, delete: if false;
+    }
+
+    // Admins registry collection
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list, create, update, delete: if false;
+    }
+
+    // Entity Validation Blueprints
+    function isValidUserPublic(data, userId) {
+      return data.keys().hasAll(['uid', 'username', 'displayName', 'role', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'username', 'displayName', 'role', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.uid == userId &&
+        data.username is string && data.username.size() >= 2 && data.username.size() <= 64 &&
+        data.username.matches('^[a-zA-Z0-9_\\-.]+$') &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        data.role is string && data.role.size() <= 32 &&
+        data.role in ['CUSTOMER', 'CASHIER', 'MERCHANT_MANAGER', 'MERCHANT_OWNER', 'SUPPORT_AGENT', 'PLATFORM_ADMIN'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivate(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'phone', 'accountCardCode', 'accountPointsBalance', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'phone', 'accountCardCode', 'accountPointsBalance', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.uid == userId &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.phone is string && data.phone.size() >= 4 && data.phone.size() <= 32 &&
+        data.accountCardCode is string && data.accountCardCode.size() >= 3 && data.accountCardCode.size() <= 64 &&
+        data.accountCardCode.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.accountPointsBalance is number && data.accountPointsBalance >= 0 && data.accountPointsBalance <= 1000000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPushTokenDoc(data, userId, tokenId) {
+      return data.keys().hasAll(['tokenId', 'uid', 'token', 'vapidKeyPrefix', 'userAgent', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['tokenId', 'uid', 'token', 'vapidKeyPrefix', 'userAgent', 'createdAt', 'updatedAt']) &&
+        data.tokenId is string && data.tokenId.size() >= 1 && data.tokenId.size() <= 128 &&
+        data.tokenId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.tokenId == tokenId &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.uid == userId &&
+        data.token is string && data.token.size() >= 10 && data.token.size() <= 512 &&
+        data.vapidKeyPrefix is string && data.vapidKeyPrefix.size() >= 4 && data.vapidKeyPrefix.size() <= 32 &&
+        data.userAgent is string && data.userAgent.size() >= 1 && data.userAgent.size() <= 180 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStoreDoc(data, storeId) {
+      return data.keys().hasAll(['storeId', 'ownerId', 'name', 'category', 'city', 'currency', 'status', 'onlineOrderingActive', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['storeId', 'ownerId', 'name', 'category', 'city', 'currency', 'status', 'onlineOrderingActive', 'createdAt', 'updatedAt']) &&
+        data.storeId is string && data.storeId.size() >= 1 && data.storeId.size() <= 128 &&
+        data.storeId == storeId &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+        data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 120 &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+        data.city is string && data.city.size() >= 1 && data.city.size() <= 60 &&
+        data.currency is string && data.currency.size() <= 10 && data.currency in ['SAR', 'EGP'] &&
+        data.status is string && data.status.size() <= 24 && data.status in ['active', 'pending', 'suspended'] &&
+        data.onlineOrderingActive is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidLoyaltyCard(data, userId, cardId) {
+      return data.keys().hasAll(['cardId', 'ownerId', 'storeId', 'cardCategory', 'currentBalance', 'totalEarned', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['cardId', 'ownerId', 'storeId', 'cardCategory', 'currentBalance', 'totalEarned', 'createdAt', 'updatedAt']) &&
+        data.cardId is string && data.cardId.size() >= 1 && data.cardId.size() <= 128 &&
+        data.cardId == cardId &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+        data.ownerId == userId &&
+        data.storeId is string && data.storeId.size() >= 1 && data.storeId.size() <= 128 &&
+        data.storeId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.cardCategory is string && data.cardCategory.size() <= 32 &&
+        data.cardCategory in ['store_stamps', 'store_points', 'account_master'] &&
+        data.currentBalance is number && data.currentBalance >= 0 && data.currentBalance <= 1000000 &&
+        data.totalEarned is number && data.totalEarned >= data.currentBalance && data.totalEarned <= 10000000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidOnlineOrder(data, orderId) {
+      return data.keys().hasAll(['orderId', 'customerId', 'storeId', 'fulfillmentType', 'total', 'status', 'summaryText', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['orderId', 'customerId', 'storeId', 'fulfillmentType', 'total', 'status', 'summaryText', 'createdAt', 'updatedAt']) &&
+        data.orderId is string && data.orderId.size() >= 1 && data.orderId.size() <= 128 &&
+        data.orderId == orderId &&
+        data.customerId is string && data.customerId.size() >= 1 && data.customerId.size() <= 128 &&
+        data.customerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.storeId is string && data.storeId.size() >= 1 && data.storeId.size() <= 128 &&
+        data.storeId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.fulfillmentType is string && data.fulfillmentType.size() <= 24 &&
+        data.fulfillmentType in ['DELIVERY', 'PICKUP'] &&
+        data.total is number && data.total >= 0 && data.total <= 1000000 &&
+        data.status is string && data.status.size() <= 24 &&
+        data.status in ['PENDING', 'ACCEPTED', 'PREPARING', 'READY', 'COMPLETED', 'REJECTED'] &&
+        data.summaryText is string && data.summaryText.size() >= 1 && data.summaryText.size() <= 500 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Collection 1: Public User Profile (/users/{userId})
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isSignedIn() && existing().uid == request.auth.uid;
+
+      allow create: if isVerified() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserPublic(incoming(), userId) &&
+        incoming().role in ['CUSTOMER', 'MERCHANT_OWNER'] &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerified() &&
+        isValidId(userId) &&
+        isValidUserPublic(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          (isOwner(userId) &&
+            incoming().role == existing().role &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['username', 'displayName', 'updatedAt'])) ||
+          isAdmin()
+        );
+
+      allow delete: if isVerified() && isValidId(userId) && isAdmin();
+
+      // Subcollection 1A: Isolated User Private PII (/users/{userId}/private/{docId})
+      match /private/{docId} {
+        allow get: if isValidId(userId) && isValidId(docId) && (
+          (isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId))) ||
+          isAdmin()
+        );
+        allow list: if false;
+
+        allow create: if isVerified() &&
+          isValidId(userId) &&
+          isValidId(docId) &&
+          isOwner(userId) &&
+          isValidUserPrivate(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId));
+
+        allow update: if isVerified() &&
+          isValidId(userId) &&
+          isValidId(docId) &&
+          isValidUserPrivate(incoming(), userId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId)) && (
+            (isOwner(userId) &&
+              incoming().accountCardCode == existing().accountCardCode &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['email', 'phone', 'accountPointsBalance', 'updatedAt'])) ||
+            isAdmin()
+          );
+
+        allow delete: if isVerified() && isValidId(userId) && isValidId(docId) && isAdmin();
+      }
+
+      // Subcollection 1B: Customer Loyalty Cards (/users/{userId}/cards/{cardId})
+      match /cards/{cardId} {
+        allow get: if isValidId(userId) && isValidId(cardId) && (
+          (isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId))) ||
+          isAdmin()
+        );
+        allow list: if isSignedIn() && isOwner(userId) && existing().ownerId == request.auth.uid;
+
+        allow create: if isVerified() &&
+          isValidId(userId) &&
+          isValidId(cardId) &&
+          isOwner(userId) &&
+          isValidLoyaltyCard(incoming(), userId, cardId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId)) &&
+          exists(/databases/$(database)/documents/stores/$(incoming().storeId));
+
+        allow update: if isVerified() &&
+          isValidId(userId) &&
+          isValidId(cardId) &&
+          isValidLoyaltyCard(incoming(), userId, cardId) &&
+          incoming().cardId == existing().cardId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().storeId == existing().storeId &&
+          incoming().cardCategory == existing().cardCategory &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId)) && (
+            (isOwner(userId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['currentBalance', 'totalEarned', 'updatedAt'])) ||
+            isAdmin()
+          );
+
+        allow delete: if isVerified() && isValidId(userId) && isValidId(cardId) && isAdmin();
+      }
+
+      // Subcollection 1C: Customer Web Push Tokens (/users/{userId}/pushTokens/{tokenId})
+      match /pushTokens/{tokenId} {
+        allow get: if isValidId(userId) && isValidId(tokenId) && (
+          (isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId))) ||
+          isAdmin()
+        );
+        allow list: if isSignedIn() && isOwner(userId) && existing().uid == request.auth.uid;
+
+        allow create: if isVerified() &&
+          isValidId(userId) &&
+          isValidId(tokenId) &&
+          isOwner(userId) &&
+          isValidPushTokenDoc(incoming(), userId, tokenId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId));
+
+        allow update: if isVerified() &&
+          isValidId(userId) &&
+          isValidId(tokenId) &&
+          isValidPushTokenDoc(incoming(), userId, tokenId) &&
+          incoming().tokenId == existing().tokenId &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId)) && (
+            (isOwner(userId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['token', 'vapidKeyPrefix', 'userAgent', 'updatedAt'])) ||
+            isAdmin()
+          );
+
+        allow delete: if isVerified() && isValidId(userId) && isValidId(tokenId) && (isOwner(userId) || isAdmin());
+      }
+    }
+
+    // Collection 2: Merchant Stores (/stores/{storeId})
+    match /stores/{storeId} {
+      allow get: if isValidId(storeId) && (existing().status == 'active' || isOwner(existing().ownerId) || isAdmin());
+      allow list: if existing().status == 'active' || (isSignedIn() && existing().ownerId == request.auth.uid);
+
+      allow create: if isVerified() &&
+        isValidId(storeId) &&
+        isValidStoreDoc(incoming(), storeId) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+
+      allow update: if isVerified() &&
+        isValidId(storeId) &&
+        isValidStoreDoc(incoming(), storeId) &&
+        incoming().storeId == existing().storeId &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          (isOwner(existing().ownerId) &&
+            incoming().status == existing().status &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'category', 'city', 'onlineOrderingActive', 'updatedAt'])) ||
+          isAdmin()
+        );
+
+      allow delete: if isVerified() && isValidId(storeId) && isAdmin();
+    }
+
+    // Collection 3: Online Store Orders (/orders/{orderId})
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && isSignedIn() && (
+        existing().customerId == request.auth.uid ||
+        get(/databases/$(database)/documents/stores/$(existing().storeId)).data.ownerId == request.auth.uid ||
+        isAdmin()
+      );
+
+      allow list: if isSignedIn() && existing().customerId == request.auth.uid;
+
+      allow create: if isVerified() &&
+        isValidId(orderId) &&
+        isValidOnlineOrder(incoming(), orderId) &&
+        incoming().customerId == request.auth.uid &&
+        incoming().status == 'PENDING' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        exists(/databases/$(database)/documents/stores/$(incoming().storeId));
+
+      allow update: if isVerified() &&
+        isValidId(orderId) &&
+        isValidOnlineOrder(incoming(), orderId) &&
+        incoming().orderId == existing().orderId &&
+        incoming().customerId == existing().customerId &&
+        incoming().storeId == existing().storeId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          (!(existing().status in ['COMPLETED', 'REJECTED']) &&
+            get(/databases/$(database)/documents/stores/$(existing().storeId)).data.ownerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+          isAdmin()
+        );
+
+      allow delete: if isVerified() && isValidId(orderId) && isAdmin();
+    }
+  }
+}

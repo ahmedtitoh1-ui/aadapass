@@ -1,0 +1,58 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  SUPPORT_AGENT
+}
+
+model AdminUser {
+  id           String          @id @default(cuid())
+  name         String
+  email        String          @unique
+  passwordHash String
+  role         AdminRole       @default(SUPPORT_AGENT)
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  auditLogs    AdminAuditLog[]
+}
+
+model AdminAuditLog {
+  id        String    @id @default(cuid())
+  adminId   String
+  admin     AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action    String    // e.g., "FORCE_ACTIVATE_SUBSCRIPTION", "UPDATE_CMS", "CHANGE_USER_ROLE"
+  target    String    // e.g., merchant ID or customer phone
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime  @default(now())
+}
+
+model Merchant {
+  id               String   @id @default(cuid())
+  name             String
+  category         String
+  subscriptionPlan String   @default("Starter")
+  status           String   @default("active")
+  joinedAt         DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model SiteSettings {
+  id             String   @id @default("global")
+  heroTitle      String
+  heroSubtitle   String
+  heroImageUrl   String?
+  isBannerActive Boolean  @default(false)
+  bannerText     String?
+  bannerLinkUrl  String?
+  bannerColor    String   @default("bg-blue-600")
+  updatedAt      DateTime @updatedAt
+}

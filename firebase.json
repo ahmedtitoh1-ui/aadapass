@@ -1,0 +1,27 @@
+{
+  "firestore": {
+    "database": "ai-studio-aadapass-2a99dc09-c77c-4921-b268-dd36d4e386c6",
+    "rules": "firestore.rules"
+  },
+  "hosting": {
+    "source": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "frameworksBackend": {
+      "region": "europe-west1"
+    }
+  },
+  "apphosting": {
+    "backendId": "aada-pass-web",
+    "rootDir": "/",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log"
+    ]
+  }
+}
